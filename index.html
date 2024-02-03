@@ -10,16 +10,18 @@
   </style>
 </head>
 <body>
-  <h3>My Google Maps Demo</h3>
+  <h3>Restaurante Locator</h3>
   <!-- The div element for the map -->
   <div id="map"></div>
 
   <script>
+    let map;
+    let userMarker;
+    let directionsService;
+    let directionsRenderer;
+
     function initMap() {
-      let map;
-      let novaims = { lat: 38.732149, lng: -9.160383 };
-      let initialPoint = { lat: 38.742149, lng: -9.150383 }; // Random initial point
-      let destinationPoint = { lat: 38.722252, lng: -9.139337 }; // Random destination point
+      let novaims = { lat: 38.732149, lng: -9.160383 }; // Novaims as the initial destination
 
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 15,
@@ -34,47 +36,51 @@
         mapTypeId: google.maps.MapTypeId.ROADMAP,
       });
 
-      let directionsService = new google.maps.DirectionsService();
-      let directionsRenderer = new google.maps.DirectionsRenderer();
-      directionsRenderer.setMap(map);
-
-      // Add markers for the initial point and destination point
-      let initialMarker = new google.maps.Marker({
-        position: initialPoint,
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
         map: map,
-        title: 'Initial Point' // Random name for initial point
+        suppressMarkers: true,
+        preserveViewport: true
       });
 
-      let destinationMarker = new google.maps.Marker({
-        position: destinationPoint,
+      // Add marker for novaims
+      let novaimsMarker = new google.maps.Marker({
+        position: novaims,
         map: map,
-        title: 'Destination Point' // Random name for destination point
+        title: 'Novaims' // Name for the initial destination
       });
 
-      // Prompt user for location access
+      // Attempt to get the user's location
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
+        navigator.geolocation.watchPosition(
           function (position) {
             let userLocation = {
               lat: position.coords.latitude,
               lng: position.coords.longitude,
             };
 
-            // Define the route request
-            let request = {
-              origin: userLocation,
-              destination: novaims,
-              travelMode: google.maps.TravelMode.WALKING,
-            };
+            if (!userMarker) {
+              // Create a new marker for the user
+              userMarker = new google.maps.Marker({
+                position: userLocation,
+                map: map,
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  fillColor: 'blue',
+                  fillOpacity: 1,
+                  strokeColor: 'white',
+                  strokeWeight: 2,
+                  scale: 10
+                },
+                title: 'Your Location'
+              });
+            } else {
+              // Update the position of the existing marker
+              userMarker.setPosition(userLocation);
+            }
 
-            // Retrieve the directions and display them on the map
-            directionsService.route(request, function (result, status) {
-              if (status == google.maps.DirectionsStatus.OK) {
-                directionsRenderer.setDirections(result);
-              } else {
-                window.alert("Directions request failed due to " + status);
-              }
-            });
+            // Update the route based on the user's current location
+            updateRoute(userLocation);
           },
           function () {
             // Handle geolocation error
@@ -85,6 +91,24 @@
         // Browser doesn't support Geolocation
         handleLocationError(false, map.getCenter());
       }
+    }
+
+    function updateRoute(userLocation) {
+      // Define the route request
+      let request = {
+        origin: userLocation,
+        destination: "38.732149, -9.160383", // Novaims
+        travelMode: google.maps.TravelMode.WALKING,
+      };
+
+      // Retrieve the directions and display them on the map
+      directionsService.route(request, function (result, status) {
+        if (status == google.maps.DirectionsStatus.OK) {
+          directionsRenderer.setDirections(result);
+        } else {
+          window.alert("Directions request failed due to " + status);
+        }
+      });
     }
 
     function handleLocationError(browserHasGeolocation, pos) {
